@@ -207,5 +207,6 @@ ray job submit --address="http://127.0.0.1:8265" \
    ${WANDB_ARGS[@]} \
    ${PERF_ARGS[@]} \
    ${EVAL_ARGS[@]} \
-   ${MISC_ARGS[@]} \
-   2>&1 | tee "${LOG_FILE}"
+   ${MISC_ARGS[@]}
+# 注:输出已由脚本头部的 exec tee 全程落 LOG_FILE;此处不再接管道,
+# 退出码也更真实(ray job submit 本身的 rc,而非 tee 的恒 0)
