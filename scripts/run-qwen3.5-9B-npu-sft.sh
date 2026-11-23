@@ -67,10 +67,10 @@ else
     NUM_EPOCH=${NUM_EPOCH:-3}; ROLLOUT_BS=${ROLLOUT_BS:-128}; GBS=${GBS:-128}; SAVE_INTERVAL=${SAVE_INTERVAL:-100}
 fi
 
-# ---------- 前置检查 ----------
+# ---------- 前置检查(注意:torch_dist 由下方转换守卫创建,不在此预检) ----------
 for p in "${SLIME_DIR}/train.py" "${MEGATRON_DIR}" "${BRIDGE_DIR}" \
          "${MBRIDGE_DIR}" "${SGLANG_DIR}/python" "${HF_CKPT}" \
-         "${TORCH_DIST}" "${PROMPT_DATA}"; do
+         "${PROMPT_DATA}"; do
     if [ ! -e "${p}" ]; then
         echo "[ERROR] 缺少 ${p} —— 依赖未装全或数据未就位"
         exit 1
@@ -89,6 +89,15 @@ export ASCEND_COREDUMP_SIGNAL=none
 
 # 模型结构参数(与 RL 同源,同一份转换缓存)
 source "${SLIME_DIR}/scripts/models/qwen3.5-9B.sh"
+
+# ---------- 权重转换(HF → Megatron torch_dist,与 RL 共用缓存,只转一次) ----------
+if [ ! -d "${TORCH_DIST}" ]; then
+    echo "[INFO] 未找到 torch_dist,开始转换(约 19G,一次性)……"
+    (cd "${SLIME_DIR}" && python3 tools/convert_hf_to_torch_dist.py \
+        ${MODEL_ARGS[@]} \
+        --hf-checkpoint "${HF_CKPT}" \
+        --save "${TORCH_DIST}")
+fi
 
 # ray job 工作目录
 cd "${SLIME_DIR}"
