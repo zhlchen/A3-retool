@@ -54,6 +54,10 @@ BASE=/home/c00954327/slime-run
 TORCH_DIST=${BASE}/Qwen3.5-9B_torch_dist                        # 与 RL 共用的转换缓存,守卫跳过
 SFT_CKPT=${BASE}/Qwen3.5-9B_sft_slime                           # SFT 产物(RL 冷启动权重)
 mkdir -p "${BASE}/logs" "${BASE}/data"
+# 全程落日志:从本行起所有输出(含预检/转换)都 tee 进 LOG_FILE,
+# 早期失败也能留下日志(旧版 tee 只挂在 ray job submit,早期阶段不落盘)
+export LOG_FILE="${BASE}/logs/train_log_$(date +%Y-%m-%d_%H-%M-%S)_qwen3.5_9b_sft.log"
+exec > >(tee -a "${LOG_FILE}") 2>&1
 PROMPT_DATA=${BASE}/data/ReTool-SFT.parquet
 if [ ! -f "${PROMPT_DATA}" ]; then
     python3 "${BASE}/data/fix_retool_sft_data.py"               # 首次会经 hf-mirror 下载 JoeYing/ReTool-SFT
@@ -168,8 +172,6 @@ MISC_ARGS=(
    --attention-backend flash
    --use-flash-attn
 )
-
-export LOG_FILE="${BASE}/logs/train_log_$(date +%Y-%m-%d_%H-%M-%S)_qwen3.5_9b_sft.log"
 
 # ray head(容器内单机)
 export MASTER_ADDR=${MASTER_ADDR:-"127.0.0.1"}
